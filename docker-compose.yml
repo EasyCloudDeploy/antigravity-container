@@ -1,0 +1,41 @@
+services:
+  antigravity:
+    build:
+      context: .
+      args:
+        GO_VERSION: "1.24.1"
+        NODE_MAJOR: "22"
+    image: antigravity-ide:latest
+    container_name: antigravity-ide
+    restart: unless-stopped
+
+    ports:
+      # Web UI — access at http://localhost:8080
+      - "${HOST_PORT:-8080}:8080"
+
+    environment:
+      # Set PASSWORD to use a fixed password; leave unset for a random one
+      # that will be printed in the container logs on every startup.
+      - PASSWORD=${PASSWORD:-}
+      # Username for HTTP Basic Auth (default: admin)
+      - AUTH_USER=${AUTH_USER:-admin}
+      # Virtual display resolution
+      - DISPLAY_WIDTH=${DISPLAY_WIDTH:-1920}
+      - DISPLAY_HEIGHT=${DISPLAY_HEIGHT:-1080}
+
+    volumes:
+      # User code — mount a host directory or use a named volume
+      - workspace:/workspace
+      # Antigravity IDE settings and auth tokens
+      - antigravity-config:/home/developer/.config/google-antigravity
+      # Chrome profile — persists Google OAuth session so you only
+      # need to sign in once
+      - chrome-profile:/home/developer/.config/google-chrome
+
+    # Antigravity (Electron) and Chrome need extra shared memory
+    shm_size: 2gb
+
+volumes:
+  workspace:
+  antigravity-config:
+  chrome-profile:
