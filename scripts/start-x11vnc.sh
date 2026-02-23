@@ -20,7 +20,7 @@ exec x11vnc \
     -display :1 \
     -forever \
     -shared \
-    -nopw \
+    -rfbauth /etc/x11vnc.passwd \
     -rfbport 5900 \
     -localhost \
     -wait 50 \

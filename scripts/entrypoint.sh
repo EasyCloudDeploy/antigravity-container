@@ -30,6 +30,11 @@ AUTH_USER="${AUTH_USER:-admin}"
 htpasswd -cb /etc/nginx/.htpasswd "$AUTH_USER" "$PASSWORD"
 echo "[auth] Nginx basic-auth configured for user: $AUTH_USER"
 
+# Write the x11vnc password file (same password — VNC auth for the WebSocket path)
+x11vnc -storepasswd "$PASSWORD" /etc/x11vnc.passwd
+chmod 600 /etc/x11vnc.passwd
+echo "[auth] x11vnc password file written."
+
 # ── XFCE display resolution ───────────────────────────────────────────────────
 DISPLAY_WIDTH="${DISPLAY_WIDTH:-1920}"
 DISPLAY_HEIGHT="${DISPLAY_HEIGHT:-1080}"
@@ -49,6 +54,26 @@ chown developer:developer /home/developer/.config \
     /home/developer/.config/google-chrome 2>/dev/null || true
 
 mkdir -p /run/dbus
+
+# Generate a noVNC landing page that auto-connects with the VNC password pre-filled.
+# The WebSocket path (/websockify) has basic-auth disabled in nginx (browsers can't
+# send Authorization headers for programmatic WebSocket connections), so VNC password
+# is the security layer for the VNC session itself.
+cat > /usr/share/novnc/index.html <<NOVNC_HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0; url=/vnc_lite.html?autoconnect=true&password=${PASSWORD}&resize=scale">
+  <title>Antigravity IDE — Loading...</title>
+</head>
+<body style="background:#1a1a2e;color:#eee;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+  <p>Loading Antigravity IDE…</p>
+</body>
+</html>
+NOVNC_HTML
+echo "[novnc] Landing page generated."
+
 echo "[display] Resolution set to ${DISPLAY_WIDTH}x${DISPLAY_HEIGHT}"
 echo "[startup] Handing off to supervisord..."
 
