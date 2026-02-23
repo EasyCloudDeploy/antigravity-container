@@ -26,14 +26,11 @@ fi
 
 AUTH_USER="${AUTH_USER:-admin}"
 
-# Write the htpasswd file used by nginx
-htpasswd -cb /etc/nginx/.htpasswd "$AUTH_USER" "$PASSWORD"
-echo "[auth] Nginx basic-auth configured for user: $AUTH_USER"
-
-# Write the x11vnc password file (same password — VNC auth for the WebSocket path)
-x11vnc -storepasswd "$PASSWORD" /etc/x11vnc.passwd
-chmod 600 /etc/x11vnc.passwd
-echo "[auth] x11vnc password file written."
+# Write KasmVNC credentials (runs as developer so the file lands in ~/.kasmpasswd)
+VNC_PASS="${PASSWORD}" VNC_USER="${AUTH_USER}" \
+    HOME=/home/developer runuser -u developer -- bash -c \
+    'printf "%s\n%s\n" "${VNC_PASS}" "${VNC_PASS}" | vncpasswd -u "${VNC_USER}" -w -r'
+echo "[auth] KasmVNC credentials set for user: ${AUTH_USER}"
 
 # ── XFCE display resolution ───────────────────────────────────────────────────
 DISPLAY_WIDTH="${DISPLAY_WIDTH:-1920}"
@@ -47,33 +44,17 @@ export DISPLAY=:1
 export HOME=/home/developer
 EOF
 
-# Ensure the developer user owns the workspace and their config dir
+# Ensure the developer user owns the workspace and their config dirs
 chown -R developer:developer /workspace 2>/dev/null || true
 chown developer:developer /home/developer/.config \
     /home/developer/.config/google-antigravity \
     /home/developer/.config/google-chrome 2>/dev/null || true
 
 mkdir -p /run/dbus
-
-# Generate a noVNC landing page that auto-connects with the VNC password pre-filled.
-# The WebSocket path (/websockify) has basic-auth disabled in nginx (browsers can't
-# send Authorization headers for programmatic WebSocket connections), so VNC password
-# is the security layer for the VNC session itself.
-cat > /usr/share/novnc/index.html <<NOVNC_HTML
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=/vnc_lite.html?autoconnect=true&password=${PASSWORD}&resize=scale">
-  <title>Antigravity IDE — Loading...</title>
-</head>
-<body style="background:#1a1a2e;color:#eee;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-  <p>Loading Antigravity IDE…</p>
-</body>
-</html>
-NOVNC_HTML
-echo "[novnc] Landing page generated."
-
+# Xvnc (KasmVNC) requires /tmp/.X11-unix to exist with sticky-bit permissions.
+# It can't create it when running as non-root, so we do it here as root.
+mkdir -p /tmp/.X11-unix
+chmod 1777 /tmp/.X11-unix
 echo "[display] Resolution set to ${DISPLAY_WIDTH}x${DISPLAY_HEIGHT}"
 echo "[startup] Handing off to supervisord..."
 

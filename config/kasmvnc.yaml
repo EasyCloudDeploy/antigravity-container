@@ -1,0 +1,27 @@
+---
+# KasmVNC server configuration — /etc/kasmvnc/kasmvnc.yaml
+# Keys validated against /usr/share/kasmvnc/kasmvnc_defaults.yaml
+
+network:
+  protocol: http
+  websocket_port: 6080
+  ssl:
+    # Disable SSL — nginx is the public endpoint and handles TLS if needed.
+    # The snakeoil cert is still referenced so the key must exist.
+    pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
+    pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
+    require_ssl: false
+
+desktop:
+  allow_resize: true
+
+encoding:
+  max_frame_rate: 24
+  video_encoding_mode:
+    jpeg_quality: -1
+    webp_quality: -1
+
+logging:
+  log_writer_name: all
+  log_dest: logfile
+  level: 30

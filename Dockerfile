@@ -23,13 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
     xz-utils \
-    # Auth / web proxy
+    # Web proxy
     nginx \
-    apache2-utils \
     # Process manager
     supervisor \
-    # Virtual display
-    xvfb \
+    # SSL cert (required by KasmVNC package)
+    ssl-cert \
+    # X11 / desktop
     x11-utils \
     x11-xserver-utils \
     xauth \
@@ -40,11 +40,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xfce4-terminal \
     xfce4-notifyd \
     xfwm4 \
-    # VNC server
-    x11vnc \
-    # noVNC web client
-    novnc \
-    websockify \
     # Electron / Antigravity runtime deps
     libgbm1 \
     libnss3 \
@@ -92,17 +87,25 @@ RUN curl -fsSL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg \
     && apt-get install -y --no-install-recommends antigravity \
     && rm -rf /var/lib/apt/lists/*
 
+# ── KasmVNC ───────────────────────────────────────────────────────────────────
+# Replaces: Xvfb + x11vnc + websockify + noVNC
+# Provides: virtual display (Xvnc), VNC server, WebSocket bridge, web client,
+#           and built-in authentication — all in one package.
+RUN apt-get update \
+    && curl -fsSL -o /tmp/kasmvnc.deb \
+        https://github.com/kasmtech/KasmVNC/releases/download/v1.3.4/kasmvncserver_jammy_1.3.4_amd64.deb \
+    && apt-get install -y /tmp/kasmvnc.deb \
+    && rm /tmp/kasmvnc.deb \
+    && rm -rf /var/lib/apt/lists/*
+
 # ── Non-root developer user ───────────────────────────────────────────────────
-# All desktop programs (Xvfb, XFCE, Antigravity, x11vnc, noVNC) run as this
-# user. Nginx/supervisord remain root for system management only.
+# All desktop programs (KasmVNC/Xvnc, XFCE, Antigravity) run as this user.
+# Nginx and supervisord remain root for system management only.
 RUN groupadd -g "${DEV_GID}" developer \
     && useradd -m -s /bin/bash -u "${DEV_UID}" -g developer developer \
+    && usermod -aG ssl-cert developer \
     && mkdir -p /home/developer/go /workspace \
     && chown -R developer:developer /home/developer /workspace
-
-# ── noVNC index symlink (prefer vnc_lite, fall back to vnc) ──────────────────
-RUN ln -sf /usr/share/novnc/vnc_lite.html /usr/share/novnc/index.html 2>/dev/null \
-    || ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html
 
 # ── Nginx: replace default site ───────────────────────────────────────────────
 RUN rm -f /etc/nginx/sites-enabled/default
@@ -110,11 +113,15 @@ RUN rm -f /etc/nginx/sites-enabled/default
 # ── Config + scripts ──────────────────────────────────────────────────────────
 COPY config/nginx.conf          /etc/nginx/sites-available/antigravity
 COPY config/supervisord.conf    /etc/supervisor/conf.d/antigravity.conf
+COPY config/kasmvnc.yaml        /etc/kasmvnc/kasmvnc.yaml
 COPY scripts/entrypoint.sh      /usr/local/bin/entrypoint.sh
-COPY scripts/start-desktop.sh   /usr/local/bin/start-desktop.sh
-COPY scripts/start-x11vnc.sh    /usr/local/bin/start-x11vnc.sh
+COPY scripts/start-kasmvnc.sh  /usr/local/bin/start-kasmvnc.sh
+COPY scripts/start-desktop.sh  /usr/local/bin/start-desktop.sh
 
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/start-desktop.sh /usr/local/bin/start-x11vnc.sh \
+RUN chmod +x \
+        /usr/local/bin/entrypoint.sh \
+        /usr/local/bin/start-kasmvnc.sh \
+        /usr/local/bin/start-desktop.sh \
     && ln -s /etc/nginx/sites-available/antigravity /etc/nginx/sites-enabled/antigravity
 
 # ── Log dir (owned by root, supervisord writes here) ─────────────────────────

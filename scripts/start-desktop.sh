@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launched by supervisord after Xvfb is up.
+# Launched by supervisord after KasmVNC (Xvnc) is up.
 # Starts the XFCE4 desktop session and auto-launches Antigravity.
 set -euo pipefail
 
@@ -10,11 +10,11 @@ set -euo pipefail
 export DISPLAY=:1
 export HOME=/home/developer
 
-# ── Wait for Xvfb ────────────────────────────────────────────────────────────
-echo "[desktop] Waiting for Xvfb on :1 ..."
+# ── Wait for Xvnc (KasmVNC) ──────────────────────────────────────────────────
+echo "[desktop] Waiting for Xvnc on :1 ..."
 for i in $(seq 1 60); do
     if xdpyinfo -display :1 >/dev/null 2>&1; then
-        echo "[desktop] Xvfb is ready."
+        echo "[desktop] Xvnc is ready."
         break
     fi
     sleep 0.5
