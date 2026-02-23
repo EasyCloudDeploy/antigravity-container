@@ -22,7 +22,6 @@ done
 
 # ── dbus session ──────────────────────────────────────────────────────────────
 if ! pgrep -x dbus-daemon >/dev/null 2>&1; then
-    mkdir -p /run/dbus
     dbus-daemon --system --fork 2>/dev/null || true
 fi
 eval "$(dbus-launch --sh-syntax --exit-with-session 2>/dev/null)" || true

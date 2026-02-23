@@ -12,7 +12,7 @@ echo "$BANNER"
 # ── Password setup ────────────────────────────────────────────────────────────
 if [ -z "${PASSWORD:-}" ]; then
     # Generate a random 20-char alphanumeric password
-    PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
+    PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20 || true)
     echo "┌──────────────────────────────────────────────┐"
     echo "│  No PASSWORD env var set — generated one:    │"
     echo "│                                              │"
@@ -43,8 +43,12 @@ export HOME=/home/developer
 EOF
 
 # Ensure the developer user owns the workspace and their config dir
-chown -R developer:developer /workspace /home/developer 2>/dev/null || true
+chown -R developer:developer /workspace 2>/dev/null || true
+chown developer:developer /home/developer/.config \
+    /home/developer/.config/google-antigravity \
+    /home/developer/.config/google-chrome 2>/dev/null || true
 
+mkdir -p /run/dbus
 echo "[display] Resolution set to ${DISPLAY_WIDTH}x${DISPLAY_HEIGHT}"
 echo "[startup] Handing off to supervisord..."
 
